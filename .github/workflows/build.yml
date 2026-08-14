@@ -32,6 +32,12 @@ jobs:
           repository: microsoft/vcpkg
           path: vcpkg
 
+      # windows-latest doesn't put cl.exe on PATH by default — vcpkg finds it
+      # internally via its own detection when building dependencies, but our
+      # own top-level `cmake --preset` needs it on PATH directly.
+      - name: Set up MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Bootstrap vcpkg
         shell: cmd
         run: vcpkg\bootstrap-vcpkg.bat
