@@ -26,4 +26,8 @@ The AddressSanitizer job builds today but can't catch anything meaningful yet �
 
 ## Branch protection
 
-Configured on GitHub: `main` requires a pull request before merging (no direct pushes), admin included. Required status checks weren't pinned at setup time — GitHub only lists a check as selectable once it has run at least once — so after the first PR runs, go to Settings → Branches → main and add `build`, `static-analysis`, and `dynamic-analysis` as required checks.
+**Configured on GitHub, live:** `main` requires a pull request before merging (0 approvals needed, so solo merges are fine — the point is no direct pushes, not review gatekeeping), enforced for admins too, force-pushes and branch deletion disallowed.
+
+Note: enforcing this on a private repo requires GitHub Pro (classic branch protection and the newer rulesets API both refused on the free plan for a private repo). Since Scenewright is meant to be shared per the upstream HelloWorld template's own licensing spirit anyway, the repo was made **public** instead of paying for Pro — worth knowing this is why it's public, not an accident.
+
+Required status checks weren't pinned at setup time — GitHub only lists a check as selectable once it has run at least once — so after the first PR runs, go to Settings → Branches → main and add `build`, `static-analysis`, and `dynamic-analysis` as required checks.
