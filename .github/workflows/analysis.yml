@@ -1,0 +1,89 @@
+name: Analysis
+
+# The slow/thorough jobs. PR-only by design (see docs/ci-and-branching.md):
+# these are required checks before a PR into main can merge, but they're too
+# slow to run on every dev push, so dev only gets build.yml's fast compile.
+#
+# static-analysis: MSVC /analyze, scoped to our own code via /analyze:external-
+# (CommonLibSSE-NG's headers aren't ours to fix, and would be pure noise).
+#
+# dynamic-analysis: builds with AddressSanitizer. Honest caveat: this cannot
+# catch anything meaningful yet — there's no test harness and CI can't launch
+# Skyrim/SKSE (see docs/build-and-test-guide.md), so today this only proves
+# the codebase stays ASan-compatible. It becomes a real gate once there's
+# runnable test code; kept here now so that's a drop-in, not a rewrite.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  static-analysis:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Scenewright
+        uses: actions/checkout@v4
+
+      - name: Checkout vcpkg
+        uses: actions/checkout@v4
+        with:
+          repository: microsoft/vcpkg
+          path: vcpkg
+
+      - name: Bootstrap vcpkg
+        shell: cmd
+        run: vcpkg\bootstrap-vcpkg.bat
+
+      - name: Cache vcpkg binaries
+        uses: actions/cache@v4
+        with:
+          path: vcpkg-cache
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-
+
+      - name: Configure (/analyze)
+        shell: cmd
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}\vcpkg
+          VCPKG_BINARY_SOURCES: clear;files,${{ github.workspace }}\vcpkg-cache,readwrite
+        run: cmake --preset analyze
+
+      - name: Build with static analysis
+        shell: cmd
+        run: cmake --build build/analyze --config Release
+
+  dynamic-analysis:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Scenewright
+        uses: actions/checkout@v4
+
+      - name: Checkout vcpkg
+        uses: actions/checkout@v4
+        with:
+          repository: microsoft/vcpkg
+          path: vcpkg
+
+      - name: Bootstrap vcpkg
+        shell: cmd
+        run: vcpkg\bootstrap-vcpkg.bat
+
+      - name: Cache vcpkg binaries
+        uses: actions/cache@v4
+        with:
+          path: vcpkg-cache
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-
+
+      - name: Configure (AddressSanitizer)
+        shell: cmd
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}\vcpkg
+          VCPKG_BINARY_SOURCES: clear;files,${{ github.workspace }}\vcpkg-cache,readwrite
+        run: cmake --preset asan
+
+      - name: Build with AddressSanitizer
+        shell: cmd
+        run: cmake --build build/asan --config Debug

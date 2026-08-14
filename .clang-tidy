@@ -1,0 +1,16 @@
+# Scoped to our own code (see HeaderFilterRegex) — CommonLibSSE-NG's headers
+# aren't ours to fix and would be pure noise here.
+Checks: >
+  -*,
+  bugprone-*,
+  clang-analyzer-*,
+  cppcoreguidelines-*,
+  performance-*,
+  portability-*,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-pro-type-reinterpret-cast
+# reinterpret_cast and raw offsets/magic numbers are how native Skyrim modding
+# code legitimately talks to reverse-engineered memory layouts — flagging
+# every one is noise, not signal, for this domain.
+HeaderFilterRegex: '^.*/src/.*'
+WarningsAsErrors: ''

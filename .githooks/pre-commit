@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+# Shared pre-commit hook for Scenewright.
+# Activate once per clone with:
+#   git config core.hooksPath .githooks
+# See .githooks/README.md for what this does and why.
+set -euo pipefail
+
+STAGED_CPP=$(git diff --cached --name-only --diff-filter=ACM -- '*.cpp' '*.h' '*.hpp' || true)
+STAGED_ALL=$(git diff --cached --name-only --diff-filter=ACM || true)
+
+fail=0
+
+# 1. clang-format check on staged C++ files.
+if [ -n "$STAGED_CPP" ]; then
+    if command -v clang-format >/dev/null 2>&1; then
+        while IFS= read -r file; do
+            [ -f "$file" ] || continue
+            if ! clang-format --dry-run --Werror "$file" >/dev/null 2>&1; then
+                echo "pre-commit: $file is not clang-format clean (run: clang-format -i $file)"
+                fail=1
+            fi
+        done <<<"$STAGED_CPP"
+    else
+        echo "pre-commit: clang-format not found, skipping style check."
+    fi
+fi
+
+# 2. JSON syntax check on staged build-config files.
+for f in vcpkg.json vcpkg-configuration.json CMakePresets.json; do
+    if echo "$STAGED_ALL" | grep -qx "$f" && command -v python3 >/dev/null 2>&1; then
+        if ! python3 -m json.tool "$f" >/dev/null 2>&1; then
+            echo "pre-commit: $f is not valid JSON."
+            fail=1
+        fi
+    fi
+done
+
+if [ "$fail" -ne 0 ]; then
+    echo "pre-commit: fix the issues above, or bypass with 'git commit --no-verify'."
+    exit 1
+fi
+
+# 3. Compile check — only if a configured build directory already exists.
+# A full `cmake --preset debug` from scratch pulls/builds CommonLibSSE-NG via
+# vcpkg and is far too slow for a commit hook, so this only runs an
+# incremental build against an already-configured build/debug/. That only
+# exists on a machine with the MSVC + vcpkg toolchain (the Windows build VM,
+# per docs/build-and-test-guide.md) — everywhere else (including this Linux
+# dev machine) this step skips with a message rather than pretending to
+# verify something it can't. .github/workflows/build.yml is the build gate
+# that always runs, regardless of which machine committed.
+if [ -n "$STAGED_CPP" ]; then
+    if [ -f "build/debug/CMakeCache.txt" ] && command -v cmake >/dev/null 2>&1; then
+        echo "pre-commit: building (incremental, debug preset)..."
+        if ! cmake --build build/debug --config Debug; then
+            echo "pre-commit: build failed. Fix the error above, or bypass with 'git commit --no-verify'."
+            exit 1
+        fi
+    else
+        echo "pre-commit: no configured build/debug/ (or cmake) found here — skipping local compile check."
+        echo "pre-commit: CI (.github/workflows/build.yml) will still verify the build on push."
+    fi
+fi
+
+# 4. clang-tidy on staged .cpp files — same toolchain-gated pattern as above:
+# needs build/debug/compile_commands.json (produced by `cmake --preset debug`),
+# so it only runs where that's configured; skips elsewhere with a message.
+# .github/workflows/analysis.yml runs the authoritative static-analysis pass
+# (MSVC /analyze) on every PR regardless of whether this ran locally.
+STAGED_CPP_FILES=$(git diff --cached --name-only --diff-filter=ACM -- '*.cpp' || true)
+if [ -n "$STAGED_CPP_FILES" ]; then
+    if [ -f "build/debug/compile_commands.json" ] && command -v clang-tidy >/dev/null 2>&1; then
+        tidy_fail=0
+        while IFS= read -r file; do
+            [ -f "$file" ] || continue
+            output=$(clang-tidy -p build/debug "$file" 2>&1) || true
+            echo "$output"
+            if echo "$output" | grep -qE ': (warning|error): '; then
+                tidy_fail=1
+            fi
+        done <<<"$STAGED_CPP_FILES"
+        if [ "$tidy_fail" -ne 0 ]; then
+            echo "pre-commit: clang-tidy found issues above. Fix them, or bypass with 'git commit --no-verify'."
+            exit 1
+        fi
+    else
+        echo "pre-commit: no build/debug/compile_commands.json (or clang-tidy) found here — skipping lint check."
+    fi
+fi
+
+exit 0

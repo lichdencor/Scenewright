@@ -1,0 +1,16 @@
+# CMake / build output
+build/
+install/
+out/
+
+# vcpkg (installed packages + the tool itself, if cloned in-tree)
+vcpkg_installed/
+vcpkg/
+
+# IDE
+.vs/
+.idea/
+*.user
+
+# CMake compile commands (regenerated per-build)
+compile_commands.json

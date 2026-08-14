@@ -1,0 +1,65 @@
+name: Build
+
+# The fast job. Runs on every push to dev (the only branch anyone pushes to
+# directly) and on every PR (dev -> main), so it's the first, cheapest signal
+# either way. main never triggers this directly — it only changes via merged
+# PRs, which already ran this (plus the full analysis suite) before merging.
+# See docs/ci-and-branching.md for the full branch/CI strategy.
+#
+# Build-only: cannot launch Skyrim or SKSE, so it does not replace the manual
+# test loop in docs/build-and-test-guide.md — it only catches compile breaks
+# (missing includes, API drift, CMake/vcpkg config mistakes). It also doubles
+# as a no-local-Windows-needed compile path: push, then download the built
+# DLL from the run's artifacts and send it to whichever machine actually
+# runs Skyrim under Proton for testing.
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Scenewright
+        uses: actions/checkout@v4
+
+      - name: Checkout vcpkg
+        uses: actions/checkout@v4
+        with:
+          repository: microsoft/vcpkg
+          path: vcpkg
+
+      - name: Bootstrap vcpkg
+        shell: cmd
+        run: vcpkg\bootstrap-vcpkg.bat
+
+      - name: Cache vcpkg binaries
+        uses: actions/cache@v4
+        with:
+          path: vcpkg-cache
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-
+
+      - name: Configure
+        shell: cmd
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}\vcpkg
+          VCPKG_BINARY_SOURCES: clear;files,${{ github.workspace }}\vcpkg-cache,readwrite
+        run: cmake --preset release
+
+      - name: Build
+        shell: cmd
+        run: cmake --build build/release --config Release
+
+      - name: Upload plugin DLL
+        uses: actions/upload-artifact@v4
+        with:
+          name: Scenewright-${{ github.sha }}
+          path: |
+            build/release/*.dll
+            build/release/*.pdb
+          if-no-files-found: error
