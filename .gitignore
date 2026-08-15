@@ -14,3 +14,7 @@ vcpkg/
 
 # CMake compile commands (regenerated per-build)
 compile_commands.json
+
+# Personal machine/setup notes — never committed, see docs/build-and-test-guide.md
+# for the generic public version
+*.local.md
