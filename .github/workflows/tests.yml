@@ -1,0 +1,47 @@
+name: Tests
+
+# Tier 1 (doctest) tests from docs/adr/0010-test-suite-strategy.md: pure C++,
+# no CommonLibSSE-NG, no RE::/SKSE:: types. Runs on ordinary ubuntu-latest —
+# deliberately NOT windows-latest, since this code needs neither Windows nor
+# the game. See docs/ci-and-branching.md "Wiring in the test suite".
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Scenewright
+        uses: actions/checkout@v4
+
+      - name: Checkout vcpkg
+        uses: actions/checkout@v4
+        with:
+          repository: microsoft/vcpkg
+          path: vcpkg
+
+      - name: Bootstrap vcpkg
+        run: ./vcpkg/bootstrap-vcpkg.sh
+
+      - name: Cache vcpkg binaries
+        uses: actions/cache@v4
+        with:
+          path: vcpkg-cache
+          key: vcpkg-tests-${{ runner.os }}-${{ hashFiles('tests/vcpkg.json') }}
+          restore-keys: |
+            vcpkg-tests-${{ runner.os }}-
+
+      - name: Configure
+        env:
+          VCPKG_BINARY_SOURCES: clear;files,${{ github.workspace }}/vcpkg-cache,readwrite
+        run: cmake -S tests -B tests/build -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
+
+      - name: Build
+        run: cmake --build tests/build
+
+      - name: Run tests
+        run: ctest --test-dir tests/build --output-on-failure

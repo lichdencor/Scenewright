@@ -1,15 +1,10 @@
-// Epic 1, Milestone 0: minimal plugin skeleton.
-// Camera/fade/scene logic intentionally not started yet — this only proves
-// the plugin loads under SKSE and can log, per docs/epic-1-camera-scene-engine.md.
+// SKSEPluginLoad wires modules together only — no logic of its own, per
+// docs/adr/0009-code-organization-pattern.md.
+
+#include "core/core.h"
 
 SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     SKSE::Init(skse);
-
-    SKSE::GetMessagingInterface()->RegisterListener([](SKSE::MessagingInterface::Message* message) {
-        if (message->type == SKSE::MessagingInterface::kDataLoaded) {
-            RE::ConsoleLog::GetSingleton()->Print("Scenewright: plugin loaded.");
-        }
-    });
-
+    SW::Core::Init();
     return true;
 }

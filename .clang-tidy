@@ -7,10 +7,21 @@ Checks: >
   cppcoreguidelines-*,
   performance-*,
   portability-*,
+  readability-function-size,
+  readability-function-cognitive-complexity,
   -cppcoreguidelines-avoid-magic-numbers,
   -cppcoreguidelines-pro-type-reinterpret-cast
 # reinterpret_cast and raw offsets/magic numbers are how native Skyrim modding
 # code legitimately talks to reverse-engineered memory layouts — flagging
 # every one is noise, not signal, for this domain.
+#
+# readability-function-size/-cognitive-complexity enforce the function-size
+# and call-depth budget in docs/adr/0009-code-organization-pattern.md — kept
+# deliberately loose (not the clang-tidy defaults) since this is a soft
+# guideline, not a hard gate; tighten only if functions actually start
+# drifting past it in review.
+CheckOptions:
+  readability-function-size.LineThreshold: '50'
+  readability-function-cognitive-complexity.Threshold: '25'
 HeaderFilterRegex: '^.*/src/.*'
 WarningsAsErrors: ''

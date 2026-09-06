@@ -23,9 +23,18 @@ endif()
 # set(OUTPUT_FOLDER "C:/path/to/any/folder")
 
 find_package(CommonLibSSE CONFIG REQUIRED)
-add_commonlibsse_plugin(${PROJECT_NAME} SOURCES src/plugin.cpp)
+
+# Explicit file list (no GLOB) — one authoritative, greppable inventory of
+# what's compiled, per docs/adr/0009-code-organization-pattern.md. Add each
+# new module .cpp here as it lands.
+add_commonlibsse_plugin(${PROJECT_NAME} SOURCES
+    src/plugin.cpp
+    src/core/core.cpp
+    src/core/core_engine.cpp
+)
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 target_precompile_headers(${PROJECT_NAME} PRIVATE src/PCH.h)
+target_include_directories(${PROJECT_NAME} PRIVATE src shared)
 
 # When the SKSE .dll is compiled, automatically copy it into the mods folder.
 # Only applies if OUTPUT_FOLDER was set above (directly or via env vars).
