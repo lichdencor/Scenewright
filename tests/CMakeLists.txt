@@ -13,12 +13,20 @@ cmake_minimum_required(VERSION 3.21)
 project(ScenewrightTests LANGUAGES CXX)
 
 find_package(doctest CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(SimpleIni CONFIG REQUIRED)
 
 add_executable(scenewright_tests
     protocol_smoke_test.cpp
     core_init_test.cpp
+    envelope_test.cpp
+    livelink_test.cpp
+    config_test.cpp
     fakes/core_fakes.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/core/core.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/config/config.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/livelink/livelink.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../shared/protocol/envelope.cpp
 )
 target_compile_features(scenewright_tests PRIVATE cxx_std_23)
 target_include_directories(scenewright_tests PRIVATE
@@ -26,7 +34,7 @@ target_include_directories(scenewright_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../src
     ${CMAKE_CURRENT_SOURCE_DIR}/../shared
 )
-target_link_libraries(scenewright_tests PRIVATE doctest::doctest)
+target_link_libraries(scenewright_tests PRIVATE doctest::doctest nlohmann_json::nlohmann_json SimpleIni::SimpleIni)
 
 enable_testing()
 include(doctest)

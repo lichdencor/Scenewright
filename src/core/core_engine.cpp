@@ -24,6 +24,16 @@ namespace SW::Core {
     }
 
     void LogToConsole(std::string_view message) {
-        RE::ConsoleLog::GetSingleton()->Print(std::string(message).c_str());
+        // The console singleton doesn't exist yet if this is called during
+        // SKSEPluginLoad itself (e.g. src/livelink's Init(), which per
+        // adr/0002 must start on plugin load, not deferred to kDataLoaded
+        // like this module's own callback) — calling Print() on it then
+        // would be a null-pointer dereference, not a thrown exception, so
+        // it must be guarded rather than left to "just work" like the
+        // kDataLoaded-deferred call site this function was originally
+        // written for.
+        if (auto* console = RE::ConsoleLog::GetSingleton()) {
+            console->Print(std::string(message).c_str());
+        }
     }
 }

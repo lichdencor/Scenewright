@@ -23,18 +23,35 @@ endif()
 # set(OUTPUT_FOLDER "C:/path/to/any/folder")
 
 find_package(CommonLibSSE CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(ixwebsocket CONFIG REQUIRED)
+find_package(SimpleIni CONFIG REQUIRED)
 
 # Explicit file list (no GLOB) — one authoritative, greppable inventory of
 # what's compiled, per docs/adr/0009-code-organization-pattern.md. Add each
 # new module .cpp here as it lands.
-add_commonlibsse_plugin(${PROJECT_NAME} SOURCES
+#
+# MINIMUM_SKSE_VERSION is spelled out fully (all four dotted components) to
+# work around a CommonLibSSE-NG vcpkg port bug: commonlibsse_parse_version()
+# relies on CMake's CMAKE_MATCH_<n> globals, which a partial version string
+# (its own "0" default) leaves stale from whatever unrelated regex last ran
+# during configure — this project's find_package(nlohmann_json)/(ixwebsocket)
+# calls are enough to make that manifest as a syntax error in the generated
+# plugin-info stub. A fully-specified version matches every capture group
+# fresh, sidestepping it regardless of what ran before.
+add_commonlibsse_plugin(${PROJECT_NAME} MINIMUM_SKSE_VERSION "0.0.0.0" SOURCES
     src/plugin.cpp
     src/core/core.cpp
     src/core/core_engine.cpp
+    src/config/config.cpp
+    src/livelink/livelink.cpp
+    src/livelink/livelink_server.cpp
+    shared/protocol/envelope.cpp
 )
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 target_precompile_headers(${PROJECT_NAME} PRIVATE src/PCH.h)
 target_include_directories(${PROJECT_NAME} PRIVATE src shared)
+target_link_libraries(${PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json ixwebsocket::ixwebsocket SimpleIni::SimpleIni)
 
 # When the SKSE .dll is compiled, automatically copy it into the mods folder.
 # Only applies if OUTPUT_FOLDER was set above (directly or via env vars).

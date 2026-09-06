@@ -3,6 +3,12 @@
     "name": "scenewright",
     "version": "0.0.1",
     "dependencies": [
-        "commonlibsse-ng"
+        "commonlibsse-ng",
+        "nlohmann-json",
+        {
+            "name": "ixwebsocket",
+            "default-features": false
+        },
+        "simpleini"
     ]
 }

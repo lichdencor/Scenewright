@@ -3,6 +3,8 @@
     "name": "scenewright-tests",
     "version": "0.0.1",
     "dependencies": [
-        "doctest"
+        "doctest",
+        "nlohmann-json",
+        "simpleini"
     ]
 }
